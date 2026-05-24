@@ -683,7 +683,8 @@
     </div>
 
     <h3>Where does Terraform fit?</h3>
-    <p>Terraform is an open-source IaC tool by HashiCorp. You describe <em>what</em> you want (a VPC, an EC2 instance, a DNS record), and Terraform figures out <em>how</em> to create, update, or delete it. It's <strong>cloud-agnostic</strong> — the same workflow works across AWS, Azure, GCP, and hundreds of other providers.</p>
+    <p>Terraform is an IaC tool by HashiCorp. You describe <em>what</em> you want (a VPC, an EC2 instance, a DNS record), and Terraform figures out <em>how</em> to create, update, or delete it. It's <strong>cloud-agnostic</strong> — the same workflow works across AWS, Azure, GCP, and hundreds of other providers.</p>
+    <p>Terraform core is licensed under the <strong>BUSL</strong> (Business Source License); providers use their own licenses. <a href="#s10">OpenTofu</a> is a community-driven fork with the same HCL syntax if you need a fully open-source toolchain.</p>
 
     <div class="diagram">
       <svg viewBox="0 0 760 200" xmlns="http://www.w3.org/2000/svg" style="max-width:700px">
@@ -879,11 +880,27 @@ source ~/.bashrc</pre>
       <button class="copy-btn" onclick="copyCode(this)">copy</button>
     </div>
 
+    <div class="callout tip">
+      <span class="callout-icon">📌</span>
+      <div class="callout-body">
+        <strong><code>required_version</code> in real projects</strong>
+        <p>Later examples omit <code>required_version</code> for brevity. In production, always pin your minimum Terraform version (e.g. <code>&gt;= 1.9</code>) in <code>versions.tf</code> so everyone on the team uses a compatible CLI.</p>
+      </div>
+    </div>
+
     <div class="callout info">
       <span class="callout-icon">🔑</span>
       <div class="callout-body">
         <strong>AWS credentials</strong>
         <p>Never hard-code AWS keys in <code>.tf</code> files. Use the AWS CLI (<code>aws configure</code>), environment variables (<code>AWS_ACCESS_KEY_ID</code> / <code>AWS_SECRET_ACCESS_KEY</code>), or an IAM role instead.</p>
+      </div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">🔐</span>
+      <div class="callout-body">
+        <strong>IAM permissions for AWS exercises</strong>
+        <p>Deploying this tutorial's AWS examples requires an IAM user or role with permissions to create the resources you define (e.g. EC2, S3, VPC, DynamoDB for remote state). <code>AccessDenied</code> errors usually mean your credentials lack the specific actions in the policy — widen scope or use an admin role while learning.</p>
       </div>
     </div>
 
@@ -915,6 +932,7 @@ source ~/.bashrc</pre>
 
     <h4>Referencing resources</h4>
     <p>Use <code>&lt;RESOURCE_TYPE&gt;.&lt;LOCAL_NAME&gt;.&lt;ATTRIBUTE&gt;</code> to reference one resource from another. This creates an <em>implicit dependency</em> — Terraform builds a dependency graph and creates resources in the right order automatically.</p>
+    <p>When Terraform cannot infer order from attribute references alone (e.g. IAM role propagation, bootstrap scripts), use an explicit <code>depends_on = [resource.type.name]</code>. Prefer attribute references over <code>depends_on</code> whenever possible — explicit dependencies are harder to maintain.</p>
 
     <h3>Data sources</h3>
     <p>Data sources let you <em>read</em> existing infrastructure that you didn't create with Terraform:</p>
@@ -935,6 +953,45 @@ source ~/.bashrc</pre>
       <button class="copy-btn" onclick="copyCode(this)">copy</button>
     </div>
 
+    <div class="code-block">
+      <div class="code-block-header">Looking up the latest Amazon Linux 2023 AMI <span class="lang-badge">hcl</span></div>
+      <pre><span class="kw">data</span> <span class="str">"aws_ami"</span> <span class="str">"amazon_linux"</span> {
+  most_recent = <span class="kw">true</span>
+  owners      = [<span class="str">"amazon"</span>]
+
+  filter {
+    name   = <span class="str">"name"</span>
+    values = [<span class="str">"al2023-ami-*-x86_64"</span>]
+  }
+}
+
+<span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"app"</span> {
+  ami           = <span class="attr">data.aws_ami.amazon_linux.id</span>
+  instance_type = <span class="str">"t3.micro"</span>
+}</pre>
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+
+    <h4>Provider aliases (multi-region / multi-account)</h4>
+    <p>Declare multiple configurations of the same provider with an <code>alias</code>, then pass <code>provider = aws.us_east_1</code> on resources that need it:</p>
+    <div class="code-block">
+      <div class="code-block-header">Multi-region AWS providers <span class="lang-badge">hcl</span></div>
+      <pre><span class="kw">provider</span> <span class="str">"aws"</span> {
+  region = <span class="str">"eu-west-1"</span>
+}
+
+<span class="kw">provider</span> <span class="str">"aws"</span> {
+  alias  = <span class="str">"us_east_1"</span>
+  region = <span class="str">"us-east-1"</span>
+}
+
+<span class="kw">resource</span> <span class="str">"aws_s3_bucket"</span> <span class="str">"logs_us"</span> {
+  provider = aws.us_east_1
+  bucket   = <span class="str">"my-logs-us-east-1"</span>
+}</pre>
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+
     <h3>Typical project file structure</h3>
     <div class="code-block">
       <div class="code-block-header">Project layout <span class="lang-badge">tree</span></div>
@@ -943,7 +1000,8 @@ source ~/.bashrc</pre>
 ├── <span class="attr">variables.tf</span>     <span class="cm"># Input variable declarations</span>
 ├── <span class="attr">outputs.tf</span>       <span class="cm"># Output value declarations</span>
 ├── <span class="attr">providers.tf</span>     <span class="cm"># Provider configuration</span>
-├── <span class="attr">versions.tf</span>      <span class="cm"># Terraform & provider version constraints</span>
+├── <span class="attr">versions.tf</span>      <span class="cm"># required_version & provider pins</span>
+├── <span class="attr">.terraform.lock.hcl</span> <span class="cm"># provider checksums — commit this</span>
 ├── <span class="attr">terraform.tfvars</span> <span class="cm"># Variable values (DO NOT commit secrets)</span>
 └── <span class="attr">.terraform/</span>      <span class="cm"># Downloaded providers (git-ignored)</span></pre>
     </div>
@@ -954,7 +1012,7 @@ source ~/.bashrc</pre>
       <p>Using the AWS provider, write a <code>main.tf</code> that creates a <code>t3.micro</code> EC2 instance:</p>
       <ol>
         <li>Configure the <code>aws</code> provider for your region</li>
-        <li>Add a <code>data "aws_ami"</code> block to look up the latest Amazon Linux 2 AMI</li>
+        <li>Add a <code>data "aws_ami"</code> block to look up the latest Amazon Linux 2023 (AL2023) AMI — see the example above</li>
         <li>Add an <code>aws_instance</code> resource referencing that AMI</li>
         <li>Run <code>terraform init</code>, then <code>terraform plan</code></li>
         <li>Inspect the plan output — how many resources will be created?</li>
@@ -1013,11 +1071,33 @@ allowed_cidrs  = [<span class="str">"10.0.0.0/8"</span>, <span class="str">"192.
       <pre><span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"app"</span> {
   count         = <span class="attr">var.instance_count</span>
   instance_type = <span class="str">"t3.micro"</span>
-  ami           = <span class="attr">data.aws_ami.latest.id</span>
+  ami           = <span class="attr">data.aws_ami.amazon_linux.id</span>
 
   tags = {
     Name = <span class="str">"app-${var.environment}-${count.index}"</span>
   }
+}</pre>
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+
+    <h4><code>for_each</code> vs <code>count</code></h4>
+    <p>Use <code>count</code> for identical replicas; prefer <code>for_each</code> when each instance has a stable, unique key (easier to add/remove without reshuffling indices):</p>
+    <div class="code-block">
+      <div class="code-block-header">for_each over a map <span class="lang-badge">hcl</span></div>
+      <pre><span class="kw">variable</span> <span class="str">"instances"</span> {
+  type = map(<span class="fn">string</span>)
+  default = {
+    web = <span class="str">"t3.micro"</span>
+    api = <span class="str">"t3.small"</span>
+  }
+}
+
+<span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"app"</span> {
+  for_each      = <span class="attr">var.instances</span>
+  instance_type = <span class="attr">each.value</span>
+  ami           = <span class="attr">data.aws_ami.amazon_linux.id</span>
+
+  tags = { Name = <span class="str">"app-${each.key}"</span> }
 }</pre>
       <button class="copy-btn" onclick="copyCode(this)">copy</button>
     </div>
@@ -1083,7 +1163,15 @@ allowed_cidrs  = [<span class="str">"10.0.0.0/8"</span>, <span class="str">"192.
       <span class="callout-icon">🔒</span>
       <div class="callout-body">
         <strong>State contains secrets</strong>
-        <p>Database passwords and other sensitive values are stored in plaintext in the state file. Never commit <code>terraform.tfstate</code> to version control — use a remote backend (see Section 07).</p>
+        <p>Sensitive values (passwords, tokens) may be stored in state and should be treated as confidential even when your remote backend encrypts at rest (S3 SSE-KMS, etc.). Never commit <code>terraform.tfstate</code> to version control — use a remote backend (see Section 07).</p>
+      </div>
+    </div>
+
+    <div class="callout info">
+      <span class="callout-icon">📐</span>
+      <div class="callout-body">
+        <strong>Configuration drift</strong>
+        <p><strong>Drift</strong> is when real cloud infrastructure no longer matches what Terraform recorded in state (e.g. someone changed a security group in the console). <code>terraform plan</code> detects drift and shows <span class="tag tag-orange">~ modify</span> actions to reconcile. Use <code>terraform apply -refresh-only</code> to update state from the cloud without changing resources.</p>
       </div>
     </div>
 
@@ -1143,12 +1231,12 @@ allowed_cidrs  = [<span class="str">"10.0.0.0/8"</span>, <span class="str">"192.
       <div class="code-block-header">root main.tf — Using the module <span class="lang-badge">hcl</span></div>
       <pre><span class="kw">module</span> <span class="str">"marketing_site"</span> {
   source      = <span class="str">"./modules/s3-website"</span>   <span class="cm"># local path</span>
-  bucket_name = <span class="str">"my-marketing-site-2024"</span>
+  bucket_name = <span class="str">"my-company-marketing-${var.environment}"</span>
 }
 
 <span class="kw">module</span> <span class="str">"blog"</span> {
   source      = <span class="str">"./modules/s3-website"</span>
-  bucket_name = <span class="str">"my-blog-site-2024"</span>
+  bucket_name = <span class="str">"my-company-blog-${var.environment}"</span>
 }
 
 <span class="cm"># Use module outputs</span>
@@ -1199,7 +1287,7 @@ allowed_cidrs  = [<span class="str">"10.0.0.0/8"</span>, <span class="str">"192.
 
     <div class="flow-steps">
       <div class="flow-step"><span class="fs-cmd">init</span><span class="fs-desc">Download providers & modules</span></div>
-      <div class="flow-step"><span class="fs-cmd">validate</span><span class="fs-desc">Check HCL syntax</span></div>
+      <div class="flow-step"><span class="fs-cmd">validate</span><span class="fs-desc">Validate configuration</span></div>
       <div class="flow-step"><span class="fs-cmd">plan</span><span class="fs-desc">Preview changes</span></div>
       <div class="flow-step"><span class="fs-cmd">apply</span><span class="fs-desc">Execute changes</span></div>
       <div class="flow-step"><span class="fs-cmd">destroy</span><span class="fs-desc">Remove resources</span></div>
@@ -1275,7 +1363,7 @@ terraform destroy -target=aws_instance.app</pre>
       <thead><tr><th>Command</th><th>Description</th></tr></thead>
       <tbody>
         <tr><td><code>terraform fmt</code></td><td>Auto-format all <code>.tf</code> files to canonical style</td></tr>
-        <tr><td><code>terraform validate</code></td><td>Validates configuration syntax and internal consistency (does not access remote state or real cloud)</td></tr>
+        <tr><td><code>terraform validate</code></td><td>Validates syntax, internal consistency, and provider schema conformance (does not access remote state or real cloud)</td></tr>
         <tr><td><code>terraform output</code></td><td>Print all output values from the last apply</td></tr>
         <tr><td><code>terraform console</code></td><td>Interactive expression evaluator (great for debugging)</td></tr>
         <tr><td><code>terraform apply -replace=RESOURCE</code></td><td>Force recreation of a specific resource (replaces the deprecated <code>terraform taint</code>)</td></tr>
@@ -1358,9 +1446,10 @@ terraform destroy -target=aws_instance.app</pre>
     </div>
 
     <h3>Creating the backend infrastructure</h3>
+    <p>Run this bootstrap configuration <strong>without</strong> a <code>backend "s3"</code> block first — use local state until the bucket (and optional lock table) exist.</p>
     <div class="code-block">
-      <div class="code-block-header">bootstrap/main.tf — Create the S3 bucket & DynamoDB table <span class="lang-badge">hcl</span></div>
-      <pre><span class="cm"># S3 bucket for state</span>
+      <div class="code-block-header">bootstrap/main.tf — S3 state bucket (+ optional DynamoDB) <span class="lang-badge">hcl</span></div>
+      <pre><span class="cm"># S3 bucket for state (required for both locking options)</span>
 <span class="kw">resource</span> <span class="str">"aws_s3_bucket"</span> <span class="str">"state"</span> {
   bucket = <span class="str">"my-company-terraform-state"</span>
 }
@@ -1379,7 +1468,7 @@ terraform destroy -target=aws_instance.app</pre>
   }
 }
 
-<span class="cm"># DynamoDB table for state locking</span>
+<span class="cm"># Only required for Option B (DynamoDB locking) — omit if using use_lockfile = true</span>
 <span class="kw">resource</span> <span class="str">"aws_dynamodb_table"</span> <span class="str">"lock"</span> {
   name         = <span class="str">"terraform-state-lock"</span>
   billing_mode = <span class="str">"PAY_PER_REQUEST"</span>
@@ -1391,6 +1480,20 @@ terraform destroy -target=aws_instance.app</pre>
   }
 }</pre>
       <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">🥚</span>
+      <div class="callout-body">
+        <strong>Chicken-and-egg: you cannot reference the backend before it exists</strong>
+        <p>The <code>backend "s3" { ... }</code> block cannot point at a bucket that does not exist yet, and backend settings cannot reference resources in the same root module. Follow this order:</p>
+        <ol>
+          <li>Write bootstrap resources (S3, and DynamoDB only for Option B) with <strong>local state</strong> — no backend block.</li>
+          <li>Run <code>terraform apply</code> to create the bucket (and table if needed).</li>
+          <li>Add the <code>backend "s3" { ... }</code> block matching that bucket, then run <code>terraform init</code>.</li>
+          <li>When prompted to migrate state, answer <strong>yes</strong> to copy local state into S3.</li>
+        </ol>
+      </div>
     </div>
 
     <h3>Remote state data source</h3>
@@ -1435,7 +1538,7 @@ terraform destroy -target=aws_instance.app</pre>
       <li><strong>Never store secrets in <code>.tf</code> files.</strong> Use environment variables, AWS Secrets Manager, HashiCorp Vault, or <code>sensitive = true</code> variables fed via CI secrets.</li>
       <li><strong>Enable state encryption</strong> at rest (S3 SSE-KMS) and in transit (TLS).</li>
       <li><strong>Apply least privilege</strong> to the IAM role/user that runs Terraform. Separate roles for plan (read) and apply (write).</li>
-      <li><strong>Use <code>terraform validate</code> + <code>tfsec</code></strong> in CI to catch misconfigurations early.</li>
+      <li><strong>Use <code>terraform validate</code> + <code>trivy config</code></strong> (or <code>checkov</code>) in CI to catch misconfigurations early. <code>tfsec</code> is still common in older pipelines but is now maintained under Aqua Trivy.</li>
     </ul>
 
     <div class="code-block">
@@ -1551,6 +1654,8 @@ terraform workspace select staging
       <button class="copy-btn" onclick="copyCode(this)">copy</button>
     </div>
 
+    <p>Mature teams often restrict <code>terraform apply</code> to CI/CD pipelines using short-lived federated credentials (e.g. GitHub Actions OIDC → AWS IAM role) instead of long-lived IAM user keys on developer laptops.</p>
+
     <h3>Collaboration checklist</h3>
     <ul>
       <li>✅ Remote backend with state locking enabled</li>
@@ -1558,7 +1663,7 @@ terraform workspace select staging
       <li>✅ Provider and module versions pinned</li>
       <li>✅ <code>terraform fmt</code> enforced in CI (use <code>fmt -check</code>)</li>
       <li>✅ Plan output posted as PR comment (use <code>atlantis</code> or GitHub Actions)</li>
-      <li>✅ <code>tfsec</code> or <code>checkov</code> security scanning in CI</li>
+      <li>✅ <code>trivy config</code>, <code>checkov</code>, or <code>tfsec</code> security scanning in CI</li>
       <li>✅ Secrets via environment variables or Vault, never in <code>.tf</code></li>
     </ul>
   </section>
@@ -1578,7 +1683,7 @@ terraform workspace select staging
 
     <div class="error-block">
       <div class="err-title">Error: Error locking state: Error acquiring the state lock</div>
-      <div class="err-fix"><strong>Fix:</strong> Another process holds the lock (or a previous run crashed). Check DynamoDB for a stale lock entry. If safe, run <code>terraform force-unlock &lt;LOCK_ID&gt;</code>. Never force-unlock if another apply might be running.</div>
+      <div class="err-fix"><strong>Fix:</strong> Another process holds the lock (or a previous run crashed). With <code>use_lockfile</code>, check for a stale <code>.tflock</code> object in the S3 bucket; with DynamoDB locking, check the lock table for a stale entry. If safe, run <code>terraform force-unlock &lt;LOCK_ID&gt;</code>. Never force-unlock if another apply might be running.</div>
     </div>
 
     <div class="error-block">
@@ -1664,11 +1769,32 @@ terraform console
     </a>
 
     <h3>Tools to level up</h3>
+    <a class="resource-card" href="https://github.com/aquasecurity/trivy" target="_blank">
+      <span class="resource-icon">🛡️</span>
+      <div class="resource-body">
+        <strong>Trivy</strong>
+        <span>Run <code>trivy config</code> for IaC security scanning (includes former tfsec rules). Preferred for new CI/CD pipelines.</span>
+      </div>
+    </a>
     <a class="resource-card" href="https://github.com/aquasecurity/tfsec" target="_blank">
       <span class="resource-icon">🛡️</span>
       <div class="resource-body">
         <strong>tfsec</strong>
-        <span>Static analysis security scanner for Terraform. Catches misconfigurations before they reach production.</span>
+        <span>Still widely used in existing repos; functionality is integrated into Trivy. Catches misconfigurations before they reach production.</span>
+      </div>
+    </a>
+    <a class="resource-card" href="https://developer.hashicorp.com/terraform/language/tests" target="_blank">
+      <span class="resource-icon">✅</span>
+      <div class="resource-body">
+        <strong>terraform test</strong>
+        <span>Native HCL tests (Terraform 1.6+). Fast, in-process module tests without deploying real cloud resources.</span>
+      </div>
+    </a>
+    <a class="resource-card" href="https://opentofu.org" target="_blank">
+      <span class="resource-icon">🔀</span>
+      <div class="resource-body">
+        <strong>OpenTofu</strong>
+        <span>Community-driven fork of Terraform (MPL-licensed) after HashiCorp moved Terraform core to BUSL. Same HCL; different CLI and registry policies — optional alternative.</span>
       </div>
     </a>
     <a class="resource-card" href="https://github.com/terraform-linters/tflint" target="_blank">
@@ -1696,7 +1822,7 @@ terraform console
       <span class="resource-icon">🧪</span>
       <div class="resource-body">
         <strong>Terratest</strong>
-        <span>Go library for writing automated tests for Terraform modules. Deploy real infrastructure, run assertions, tear down.</span>
+        <span>Go library for full integration tests: deploy real infrastructure, run assertions, tear down. Pair with native <code>terraform test</code> for fast module checks.</span>
       </div>
     </a>
 
