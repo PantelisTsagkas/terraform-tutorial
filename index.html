@@ -665,6 +665,7 @@
       <div class="hero-stat"><strong>AWS · GCP · Azure</strong> providers covered</div>
       <div class="hero-stat"><span class="tag tag-green">Beginner</span><span class="tag tag-orange">→</span><span class="tag tag-orange">Intermediate</span></div>
     </div>
+
   </section>
 
   <!-- SECTION 1: IaC & Terraform -->
@@ -686,7 +687,7 @@
 
     <h3>Where does Terraform fit?</h3>
     <p>Terraform is an IaC tool by HashiCorp. You describe <em>what</em> you want (a VPC, an EC2 instance, a DNS record), and Terraform figures out <em>how</em> to create, update, or delete it. It's <strong>cloud-agnostic</strong> — the same workflow works across AWS, Azure, GCP, and hundreds of other providers.</p>
-    <p>Terraform core is licensed under the <strong>BUSL</strong> (Business Source License); providers use their own licenses. <a href="#s10">OpenTofu</a> is a community-driven fork with the same HCL syntax if you need a fully open-source toolchain.</p>
+    <p>Terraform core is licensed under the <strong>BUSL</strong> (Business Source License); providers use their own licenses. After HashiCorp changed Terraform's license from MPL to BUSL in 2023, the community created <a href="#s10">OpenTofu</a> — a community-driven fork that maintains HCL compatibility and provides a fully open-source alternative.</p>
 
     <div class="diagram">
       <svg viewBox="0 0 760 200" xmlns="http://www.w3.org/2000/svg" style="max-width:700px">
@@ -827,6 +828,14 @@ source ~/.bashrc</pre>
       <button class="copy-btn" onclick="copyCode(this)">copy</button>
     </div>
 
+    <div class="callout warn">
+      <span class="callout-icon">🔐</span>
+      <div class="callout-body">
+        <strong>KMS encryption caveat</strong>
+        <p>If you choose <code>sse_algorithm = "aws:kms"</code> then be explicit about the KMS key you will use (customer-managed CMK) or explain the behavior of AWS-managed keys. Beginners frequently hit IAM/KMS permission errors — using <code>AES256</code> is simpler for learning, and you can upgrade to KMS once you provision the key and verify permissions.</p>
+      </div>
+    </div>
+
     <h3>Recommended editor setup</h3>
     <p>Install <strong>VS Code</strong> with the <a href="https://marketplace.visualstudio.com/items?itemName=hashicorp.terraform" target="_blank">HashiCorp Terraform extension</a>. It gives you syntax highlighting, autocomplete, and inline docs.</p>
 
@@ -870,7 +879,7 @@ source ~/.bashrc</pre>
   required_providers {
     aws = {
       source  = <span class="str">"hashicorp/aws"</span>
-      version = <span class="str">"~> 5.0"</span>   <span class="cm"># ~> means "compatible with 5.x"</span>
+      version = <span class="str">"~> 5.0.0"</span>   <span class="cm"># prefer '~> 5.0.0' or an explicit range like '>= 5.0.0, < 6.0.0' for clarity</span>
     }
   }
 }
@@ -886,9 +895,24 @@ source ~/.bashrc</pre>
       <span class="callout-icon">📌</span>
       <div class="callout-body">
         <strong><code>required_version</code> in real projects</strong>
-        <p>Later examples omit <code>required_version</code> for brevity. In production, always pin your minimum Terraform version (e.g. <code>&gt;= 1.9</code>) in <code>versions.tf</code> so everyone on the team uses a compatible CLI.</p>
+        <p>Later examples omit <code>required_version</code> for brevity. In production, always pin your minimum Terraform version (e.g. <code>&gt;= 1.9</code>) in <code>versions.tf</code> so everyone on the team uses a compatible CLI. For provider pins, prefer explicit ranges or the more specific <code>~&gt; 5.0.0</code> / <code>&gt;= 5.0.0, &lt; 6.0.0</code> style to avoid unexpected updates.</p>
       </div>
     </div>
+
+    <h3>Lifecycle meta-arguments</h3>
+    <p>The <code>lifecycle</code> block lets you control how Terraform creates, replaces, or destroys resources in production. Common options:</p>
+    <div class="code-block">
+      <div class="code-block-header">Example <span class="lang-badge">hcl</span></div>
+      <pre><span class="kw">resource</span> <span class="str">"aws_instance"</span> <span class="str">"db"</span> {
+  # ...
+  lifecycle {
+    prevent_destroy       = <span class="kw">true</span>
+    create_before_destroy = <span class="kw">true</span>
+  }
+}</pre>
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+    <p>Use <code>prevent_destroy</code> to guard critical resources and <code>create_before_destroy</code> to reduce downtime during replacements.</p>
 
     <div class="callout info">
       <span class="callout-icon">🔑</span>
@@ -1365,7 +1389,7 @@ terraform destroy -target=aws_instance.app</pre>
       <thead><tr><th>Command</th><th>Description</th></tr></thead>
       <tbody>
         <tr><td><code>terraform fmt</code></td><td>Auto-format all <code>.tf</code> files to canonical style</td></tr>
-        <tr><td><code>terraform validate</code></td><td>Validates syntax, internal consistency, and provider schema conformance (does not access remote state or real cloud)</td></tr>
+        <tr><td><code>terraform validate</code></td><td>Validates configuration syntax, type correctness, provider schema conformance, and internal consistency (note: it does not access remote state or call cloud provider APIs)</td></tr>
         <tr><td><code>terraform output</code></td><td>Print all output values from the last apply</td></tr>
         <tr><td><code>terraform console</code></td><td>Interactive expression evaluator (great for debugging)</td></tr>
         <tr><td><code>terraform apply -replace=RESOURCE</code></td><td>Force recreation of a specific resource (replaces the deprecated <code>terraform taint</code>)</td></tr>
@@ -1420,18 +1444,18 @@ terraform destroy -target=aws_instance.app</pre>
     <div class="code-block">
       <div class="code-block-header">backend.tf — Native S3 locking (v1.10+) <span class="lang-badge">hcl</span></div>
       <pre><span class="kw">terraform</span> {
-  backend <span class="str">"s3"</span> {
-    bucket       = <span class="str">"my-company-terraform-state"</span>
-    key          = <span class="str">"production/vpc/terraform.tfstate"</span>
-    region       = <span class="str">"eu-west-1"</span>
-    encrypt      = <span class="kw">true</span>
-    use_lockfile = <span class="kw">true</span>   <span class="cm"># native S3 locking — no DynamoDB needed</span>
-  }
-}</pre>
+      backend <span class="str">"s3"</span> {
+        bucket       = <span class="str">"my-company-terraform-state"</span>
+        key          = <span class="str">"production/vpc/terraform.tfstate"</span>
+        region       = <span class="str">"eu-west-1"</span>
+        encrypt      = <span class="kw">true</span>
+        use_lockfile = <span class="kw">true</span>   <span class="cm"># native S3 locking — no DynamoDB needed (Terraform 1.9+)</span>
+      }
+    }</pre>
       <button class="copy-btn" onclick="copyCode(this)">copy</button>
     </div>
 
-    <p><strong>Option B — DynamoDB locking</strong> (legacy, still widely used in existing infrastructure): Historically, Terraform required a separate DynamoDB table for state locking. You'll encounter this pattern in many existing setups, so it's worth knowing.</p>
+    <p><strong>Option B — DynamoDB locking</strong> (legacy, still widely used in existing infrastructure): Historically, Terraform required a separate DynamoDB table for state locking. You'll encounter this pattern in many existing setups, so it's worth knowing. For new projects on Terraform 1.9+, prefer <code>use_lockfile = true</code> for native S3 locking; use DynamoDB when you need cross-region, cross-account, or legacy compatibility.</p>
 
     <div class="code-block">
       <div class="code-block-header">backend.tf — DynamoDB locking (legacy / existing infra) <span class="lang-badge">hcl</span></div>
@@ -1465,7 +1489,7 @@ terraform destroy -target=aws_instance.app</pre>
   bucket = <span class="attr">aws_s3_bucket.state.id</span>
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = <span class="str">"aws:kms"</span>
+      sse_algorithm = <span class="str">"AES256"</span>  <span class="cm"># AES256 is simpler for beginners; use KMS (aws:kms) as an advanced option later</span>
     }
   }
 }
@@ -1523,7 +1547,7 @@ terraform destroy -target=aws_instance.app</pre>
       <span class="callout-icon">🏢</span>
       <div class="callout-body">
         <strong>Terraform Cloud / HCP Terraform</strong>
-        <p>HashiCorp's hosted platform provides remote state, run history, team access controls, and SSO. HCP Terraform offers a free tier suitable for small teams and learning environments. Configure with <code>backend "remote" { hostname = "app.terraform.io" ... }</code>.</p>
+        <p><strong>Drift</strong> is when real cloud infrastructure no longer matches what Terraform recorded in state (e.g. someone changed a security group in the console). During <code>terraform plan</code>, Terraform compares the configured resources and the recorded state against the real infrastructure to detect drift and will show <span class="tag tag-orange">~ modify</span> actions to reconcile differences. Use <code>terraform apply -refresh-only</code> to update state from the cloud without making resource changes, and treat drift detection as a routine part of your operational checks.</p>
       </div>
     </div>
   </section>
@@ -1717,16 +1741,18 @@ terraform workspace select staging
     <div class="code-block">
       <div class="code-block-header">Enabling verbose logging <span class="lang-badge">bash</span></div>
       <pre><span class="cm"># Set log level (TRACE > DEBUG > INFO > WARN > ERROR)</span>
-export TF_LOG=DEBUG
-terraform plan
+    export TF_LOG=DEBUG
+    terraform plan
 
-<span class="cm"># Write logs to a file</span>
-export TF_LOG_PATH=./terraform-debug.log
+    <span class="cm"># Write logs to a file</span>
+    export TF_LOG_PATH=./terraform-debug.log
 
-<span class="cm"># Use the console to test expressions</span>
-terraform console
-<span class="cm"># > var.environment</span>
-<span class="cm"># > aws_instance.app[0].public_ip</span></pre>
+    <span class="cm"># Use the console to test expressions</span>
+    terraform console
+    <span class="cm"># &gt; var.environment</span>
+    <span class="cm"># &gt; upper("terraform")</span>
+    <span class="cm"># &gt; length(["a", "b", "c"])</span>
+    <span class="cm"># Note: referencing resource attributes (e.g. aws_instance.app[0].public_ip) only works after an apply has created resources and when count/for_each produce elements.</span></pre>
       <button class="copy-btn" onclick="copyCode(this)">copy</button>
     </div>
 

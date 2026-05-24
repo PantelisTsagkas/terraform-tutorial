@@ -1,6 +1,6 @@
 # Terraform Mastery — From Zero to Infrastructure
 
-A concise, hands-on guide to provisioning and managing cloud infrastructure with HashiCorp Terraform. The full, styled tutorial is available in the local HTML file: [terraform-tutorial.html](terraform-tutorial.html).
+A concise, hands-on guide to provisioning and managing cloud infrastructure with HashiCorp Terraform. The full, styled tutorial is available in the local HTML file: [index.html](index.html).
 
 **Contents**
 
@@ -12,14 +12,14 @@ A concise, hands-on guide to provisioning and managing cloud infrastructure with
 
 **Quick start — view the tutorial**
 
-- Open the file directly in a browser: open the workspace file [terraform-tutorial.html](terraform-tutorial.html) with your browser.
+- Open the file directly in a browser: open the workspace file [index.html](index.html) with your browser.
 
 - Serve it locally (recommended for full resource loading):
 
 ```bash
 # from the project root
 python3 -m http.server 8000
-# then open http://localhost:8000/terraform-tutorial.html
+# then open http://localhost:8000/index.html
 ```
 
 **Try the examples**
@@ -44,7 +44,7 @@ terraform -version
 
 **Project structure**
 
-- [terraform-tutorial.html](terraform-tutorial.html) — the tutorial content and examples (single-file HTML).
+- [index.html](index.html) — the tutorial content and examples (single-file HTML).
 
 **Contributing**
 
