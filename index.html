@@ -135,6 +135,7 @@
     width: 40px;
     height: 36px;
   }
+  #theme-toggle { flex-shrink: 0; }
   #theme-toggle svg { width: 18px; height: 18px; display: block; }
   #theme-toggle:focus { outline: 3px solid rgba(123,94,167,0.18); outline-offset: 2px; }
   /* Show correct icon */
@@ -157,6 +158,23 @@
     #site-header { padding-right: 12px; }
     /* ensure toggle has small margins */
     #theme-toggle { margin-left: 8px; margin-right: 6px; }
+  }
+
+  /* Mobile: make copy buttons visible and touch-friendly */
+  @media (max-width: 900px) {
+    .code-block .copy-btn {
+      display: block !important;
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 8px 12px;
+      font-size: 12px;
+      background: var(--border);
+      color: var(--text-muted);
+      border-radius: 6px;
+    }
+    .code-block .copy-btn:hover { background: var(--purple); color: #fff; }
+    .code-block pre { padding-top: 40px; }
   }
   .progress-bar {
     width: 120px; height: 4px;
@@ -666,11 +684,11 @@
     Terraform Mastery
     <span class="header-badge">v1.9+</span>
   </div>
+  <button id="theme-toggle" aria-pressed="false" aria-label="Toggle color theme" title="Toggle theme"></button>
   <div class="header-progress">
     <span id="progress-pct">0%</span>
     <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
   </div>
-  <button id="theme-toggle" aria-pressed="false" aria-label="Toggle color theme" title="Toggle theme"></button>
 </header>
 
 <!-- SIDEBAR -->
@@ -2065,10 +2083,12 @@ terraform workspace select staging
     const moonSvg = '<svg class="icon-moon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor"/></svg>';
     const sunSvg  = '<svg class="icon-sun" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 
+    // Always render both icons; CSS will show the appropriate one.
+    btn.innerHTML = moonSvg + sunSvg;
+
     function render() {
       const isLight = document.documentElement.classList.contains('light');
       btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
-      btn.innerHTML = isLight ? sunSvg : moonSvg;
     }
 
     btn.addEventListener('click', () => {
