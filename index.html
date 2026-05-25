@@ -608,6 +608,7 @@
   .resource-body {}
   .resource-body strong { display: block; color: var(--text); font-family: var(--font-display); font-size: 14px; margin-bottom: 2px; }
   .resource-body span { font-size: 12.5px; color: var(--text-muted); }
+  .resource-body span { font-size: 12.5px; color: var(--text-dim); }
 
   /* ── TROUBLESHOOT ── */
   .error-block {
@@ -714,6 +715,9 @@
   <a class="nav-item" href="#s10" onclick="setActive(this)">
     <span class="nav-num">10</span><span class="nav-dot"></span> Further Resources
   </a>
+  <a class="nav-item" href="#glossary" onclick="setActive(this)">
+    <span class="nav-num">11</span><span class="nav-dot"></span> Glossary
+  </a>
 </nav>
 
 <!-- MAIN -->
@@ -743,7 +747,7 @@
       <h2>What is Infrastructure as Code — and why Terraform?</h2>
     </div>
 
-    <h3>Infrastructure as Code (IaC)</h3>
+    <h3><a href="#glossary-iac">Infrastructure as Code (IaC)</a></h3>
     <p>Traditionally, cloud resources (servers, databases, networks) were created by clicking through a web console or running ad-hoc scripts. <strong>Infrastructure as Code</strong> means expressing that infrastructure in declarative configuration files you can version, review, and reuse — just like application code.</p>
 
     <div class="card-grid">
@@ -934,11 +938,11 @@ source ~/.bashrc</pre>
       <h2>Providers, Resources & Configuration Files</h2>
     </div>
 
-    <h3>The HCL language</h3>
+    <h3><a href="#glossary-hcl">The HCL language</a></h3>
     <p>Terraform configuration is written in <strong>HCL (HashiCorp Configuration Language)</strong> — a human-readable format that lives in <code>.tf</code> files. Every Terraform project is a directory of <code>.tf</code> files that Terraform treats as one combined configuration.</p>
 
     <h3>Providers</h3>
-    <p>A <strong>provider</strong> is a plugin that lets Terraform talk to a specific API — AWS, Azure, GCP, GitHub, Cloudflare, Kubernetes, and hundreds more. You declare which providers you need in a <code>required_providers</code> block:</p>
+    <p>A <a href="#glossary-provider"><strong>provider</strong></a> is a plugin that lets Terraform talk to a specific API — AWS, Azure, GCP, GitHub, Cloudflare, Kubernetes, and hundreds more. You declare which providers you need in a <code>required_providers</code> block:</p>
 
     <div class="code-block">
       <div class="code-block-header">main.tf — Provider configuration <span class="lang-badge">hcl</span></div>
@@ -999,7 +1003,7 @@ source ~/.bashrc</pre>
     </div>
 
     <h3>Resources</h3>
-    <p>A <strong>resource</strong> is any piece of infrastructure you want Terraform to manage. The syntax is always: <code>resource "&lt;TYPE&gt;" "&lt;LOCAL_NAME&gt;" { ... }</code></p>
+    <p>A <a href="#glossary-resource"><strong>resource</strong></a> is any piece of infrastructure you want Terraform to manage. The syntax is always: <code>resource "&lt;TYPE&gt;" "&lt;LOCAL_NAME&gt;" { ... }</code></p>
 
     <div class="code-block">
       <div class="code-block-header">main.tf — AWS S3 bucket example <span class="lang-badge">hcl</span></div>
@@ -1108,7 +1112,7 @@ source ~/.bashrc</pre>
         <li>Configure the <code>aws</code> provider for your region</li>
         <li>Add a <code>data "aws_ami"</code> block to look up the latest Amazon Linux 2023 (AL2023) AMI — see the example above</li>
         <li>Add an <code>aws_instance</code> resource referencing that AMI</li>
-        <li>Run <code>terraform init</code>, then <code>terraform plan</code></li>
+        <li>Run <code>terraform init</code>, then <a href="#glossary-plan"><code>terraform plan</code></a></li>
         <li>Inspect the plan output — how many resources will be created?</li>
       </ol>
     </div>
@@ -1197,7 +1201,7 @@ allowed_cidrs  = [<span class="str">"10.0.0.0/8"</span>, <span class="str">"192.
     </div>
 
     <h3>Output Values</h3>
-    <p>Outputs expose values after a <code>terraform apply</code> — useful for passing data between modules or displaying connection details:</p>
+    <p>Outputs expose values after a <a href="#glossary-apply"><code>terraform apply</code></a> — useful for passing data between modules or displaying connection details:</p>
 
     <div class="code-block">
       <div class="code-block-header">outputs.tf <span class="lang-badge">hcl</span></div>
@@ -1219,7 +1223,7 @@ allowed_cidrs  = [<span class="str">"10.0.0.0/8"</span>, <span class="str">"192.
       <button class="copy-btn" onclick="copyCode(this)">copy</button>
     </div>
 
-    <h3>State Files</h3>
+    <h3><a href="#glossary-state">State Files</a></h3>
     <p>Terraform records what it created in a <strong>state file</strong> (<code>terraform.tfstate</code>). This is how it knows what exists, what's changed, and what needs to be destroyed.</p>
 
     <div class="diagram">
@@ -1288,7 +1292,7 @@ allowed_cidrs  = [<span class="str">"10.0.0.0/8"</span>, <span class="str">"192.
       <span class="section-num">05</span>
       <h2>Modules & Reusability</h2>
     </div>
-    <p>A <strong>module</strong> is a directory of <code>.tf</code> files treated as a reusable unit. Every Terraform project is already a "root module". You create child modules to avoid repeating yourself.</p>
+    <p>A <a href="#glossary-module"><strong>module</strong></a> is a directory of <code>.tf</code> files treated as a reusable unit. Every Terraform project is already a "root module". You create child modules to avoid repeating yourself.</p>
 
     <h3>Creating a module</h3>
     <div class="code-block">
@@ -1591,7 +1595,7 @@ terraform destroy -target=aws_instance.app</pre>
     </div>
 
     <h3>Remote state data source</h3>
-    <p>Read outputs from another Terraform workspace's state file:</p>
+    <p>Read outputs from another Terraform <a href="#glossary-workspace">workspace</a>'s state file:</p>
     <div class="code-block">
       <div class="code-block-header">Reading another workspace's state <span class="lang-badge">hcl</span></div>
       <pre><span class="kw">data</span> <span class="str">"terraform_remote_state"</span> <span class="str">"vpc"</span> {
@@ -1954,6 +1958,44 @@ terraform workspace select staging
         <span class="tag tag-teal">Ready for production</span>
       </div>
     </div>
+  </section>
+
+  <!-- GLOSSARY -->
+  <section class="section" id="glossary">
+    <div class="section-header">
+      <span class="section-num">11</span>
+      <h2>Glossary</h2>
+    </div>
+
+    <h3 id="glossary-iac">Infrastructure as Code (IaC)</h3>
+    <p>Expressing infrastructure (networks, servers, DNS, etc.) as declarative, versioned configuration files you can review, test, and apply programmatically.</p>
+
+    <h3 id="glossary-hcl">HCL (HashiCorp Configuration Language)</h3>
+    <p>The human-friendly configuration language Terraform uses for <code>.tf</code> files. HCL is declarative and designed for readability and tooling.</p>
+
+    <h3 id="glossary-provider">Provider</h3>
+    <p>A plugin that lets Terraform interact with a specific API (AWS, Azure, GCP, GitHub, etc.). Providers expose resource types and data sources.</p>
+
+    <h3 id="glossary-resource">Resource</h3>
+    <p>An individual infrastructure object Terraform manages (e.g., an S3 bucket, an EC2 instance). Resources are declared with the <code>resource</code> block.</p>
+
+    <h3 id="glossary-module">Module</h3>
+    <p>A reusable collection of Terraform configuration (a directory of <code>.tf</code> files). Use modules to encapsulate and share common patterns.</p>
+
+    <h3 id="glossary-state">State</h3>
+    <p>Terraform's record of what it has created and its current view of the real infrastructure. State is stored in <code>terraform.tfstate</code> and is required for planning and diffing.</p>
+
+    <h3 id="glossary-backend">Backend</h3>
+    <p>Configures where Terraform's state is persisted (local file, S3, Terraform Cloud, etc.) and how locking/versioning is handled.</p>
+
+    <h3 id="glossary-workspace">Workspace</h3>
+    <p>A named state workspace within a single configuration that lets you keep multiple state versions (e.g., <em>dev</em>, <em>staging</em>, <em>prod</em>) without separate directories.</p>
+
+    <h3 id="glossary-plan">Plan</h3>
+    <p>The output that shows what Terraform will change to reconcile your configuration with the recorded state and real infrastructure. Produced by <code>terraform plan</code>.</p>
+
+    <h3 id="glossary-apply">Apply</h3>
+    <p>The step that executes the planned changes and updates state. Performed with <code>terraform apply</code> (or by applying a saved plan file).</p>
   </section>
 
 </main>
