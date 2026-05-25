@@ -8,6 +8,19 @@
 <title>Terraform Mastery — From Zero to Infrastructure</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<!-- Apply saved theme early to avoid flash-of-incorrect-theme -->
+<script>
+  (function(){
+    try {
+      const t = localStorage.getItem('theme');
+      if (t === 'light') document.documentElement.classList.add('light');
+      else if (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
+        document.documentElement.classList.add('light');
+      }
+    } catch(e) { /* ignore */ }
+  })();
+</script>
+
 <style>
   :root {
     --bg: #0d0f14;
@@ -32,6 +45,29 @@
     --font-body: 'DM Sans', sans-serif;
     --sidebar-w: 280px;
     --header-h: 60px;
+    --header-bg: rgba(13,15,20,0.92);
+  }
+
+  /* Light theme overrides */
+  .light {
+    --bg: #f6f8fb;
+    --surface: #ffffff;
+    --surface2: #f8f9fc;
+    --border: #e6e9f2;
+    --border-bright: #cfd8ea;
+    --purple: #6b4a9a;
+    --purple-bright: #8a5fbf;
+    --purple-glow: #7b5ea7;
+    --teal: #00796b;
+    --teal-dim: #01695f;
+    --orange: #d35400;
+    --yellow: #b08900;
+    --red: #b00020;
+    --green: #2e7d32;
+    --text: #0d1720;
+    --text-dim: #374151;
+    --text-muted: #56606f;
+    --header-bg: rgba(255,255,255,0.92);
   }
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -58,7 +94,7 @@
   #site-header {
     position: fixed; top: 0; left: 0; right: 0; z-index: 100;
     height: var(--header-h);
-    background: rgba(13,15,20,0.92);
+    background: var(--header-bg);
     backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center;
@@ -84,12 +120,43 @@
     letter-spacing: 0.5px;
     margin-left: 4px;
   }
+  /* Theme toggle button */
+  #theme-toggle {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    cursor: pointer;
+    width: 40px;
+    height: 36px;
+  }
+  #theme-toggle svg { width: 18px; height: 18px; display: block; }
+  #theme-toggle:focus { outline: 3px solid rgba(123,94,167,0.18); outline-offset: 2px; }
+  /* Show correct icon */
+  #theme-toggle .icon-sun { display: none; }
+  .light #theme-toggle .icon-sun { display: block; }
+  .light #theme-toggle .icon-moon { display: none; }
   .header-progress {
     margin-left: auto;
     display: flex; align-items: center; gap: 10px;
     font-family: var(--font-mono);
     font-size: 11px;
     color: var(--text-muted);
+  }
+  @media (max-width: 900px) {
+    /* compact progress for mobile: show bar only (no percentage text) */
+    .header-progress { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .header-progress #progress-pct { display: none; }
+    .header-progress .progress-bar { width: 90px; height: 4px; }
+    /* reduce right padding so toggle isn't clipped */
+    #site-header { padding-right: 12px; }
+    /* ensure toggle has small margins */
+    #theme-toggle { margin-left: 8px; margin-right: 6px; }
   }
   .progress-bar {
     width: 120px; height: 4px;
@@ -269,7 +336,7 @@
 
   /* syntax highlights */
   .kw { color: #c792ea; }
-  .str { color: #c3e88d; }
+  .str { color: #92bb54; }
   .cm { color: #546e7a; font-style: italic; }
   .fn { color: #82aaff; }
   .num { color: #f78c6c; }
@@ -602,6 +669,7 @@
     <span id="progress-pct">0%</span>
     <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
   </div>
+  <button id="theme-toggle" aria-pressed="false" aria-label="Toggle color theme" title="Toggle theme"></button>
 </header>
 
 <!-- SIDEBAR -->
@@ -1947,6 +2015,28 @@ terraform workspace select staging
 
   window.addEventListener('scroll', updateProgress, { passive: true });
   updateProgress();
+
+  // Theme toggle: set button content, aria state, and persist preference
+  (function(){
+    const btn = document.getElementById('theme-toggle');
+    if (!btn) return;
+    const moonSvg = '<svg class="icon-moon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" fill="currentColor"/></svg>';
+    const sunSvg  = '<svg class="icon-sun" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+    function render() {
+      const isLight = document.documentElement.classList.contains('light');
+      btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+      btn.innerHTML = isLight ? sunSvg : moonSvg;
+    }
+
+    btn.addEventListener('click', () => {
+      const isLight = document.documentElement.classList.toggle('light');
+      try { localStorage.setItem('theme', isLight ? 'light' : 'dark'); } catch(e) {}
+      render();
+    });
+
+    render();
+  })();
 </script>
 </body>
 </html>
